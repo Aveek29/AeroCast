@@ -5,7 +5,7 @@
 | Variable | Required | Where to get |
 |---|---|---|
 | `NEXT_PUBLIC_WEATHER_API_KEY` | Yes | https://openweathermap.org/api |
-| `GROQ_API_KEY` | No (chatbot falls back to basic replies) | https://console.groq.com |
+| `NEXT_PUBLIC_GROQ_API_KEY` | No (chatbot falls back to basic replies) | https://console.groq.com |
 
 > `NEXT_PUBLIC_` prefix makes the key available to browser code — OpenWeather keys are client-safe.
 
@@ -51,7 +51,7 @@ docker push <account>.dkr.ecr.<region>.amazonaws.com/aerocast:latest
 # Install EB CLI, then:
 eb init -p docker aerocast
 eb create aerocast-env
-eb setenv NEXT_PUBLIC_WEATHER_API_KEY=xxx GROQ_API_KEY=xxx
+eb setenv NEXT_PUBLIC_WEATHER_API_KEY=xxx NEXT_PUBLIC_GROQ_API_KEY=xxx
 eb open
 ```
 
@@ -71,7 +71,7 @@ git clone https://github.com/your/repo.git
 cd aerocast-web
 npm ci
 echo "NEXT_PUBLIC_WEATHER_API_KEY=xxx" >> .env
-echo "GROQ_API_KEY=xxx" >> .env
+echo "NEXT_PUBLIC_GROQ_API_KEY=xxx" >> .env
 npm run build
 npm start
 ```

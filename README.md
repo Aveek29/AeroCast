@@ -22,7 +22,7 @@ Real-time weather, interactive radar map, Groq-powered AI travel assistant.
 2. **Add API keys** — edit `.env` in the project root:
    ```
    NEXT_PUBLIC_WEATHER_API_KEY=your_openweather_key
-   GROQ_API_KEY=your_groq_key
+   NEXT_PUBLIC_GROQ_API_KEY=your_groq_key
    ```
 
    - OpenWeather key (one key for everything): https://openweathermap.org/api

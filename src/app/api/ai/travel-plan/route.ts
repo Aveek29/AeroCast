@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const groqKey = process.env.GROQ_API_KEY;
+  const groqKey = process.env.NEXT_PUBLIC_GROQ_API_KEY;
   if (!groqKey) {
     const plan = generateBasicPlan(body);
     return NextResponse.json({ success: true, data: plan });
