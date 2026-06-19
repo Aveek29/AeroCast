@@ -178,6 +178,19 @@ async function fetchAQI(lat: number, lon: number): Promise<number> {
   }
 }
 
+async function fetchUV(lat: number, lon: number): Promise<number> {
+  try {
+    const res = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=uv_index_max&timezone=auto`
+    );
+    if (!res.ok) return -1;
+    const data = await res.json();
+    return data.daily?.uv_index_max?.[0] ?? -1;
+  } catch {
+    return -1;
+  }
+}
+
 export async function fetchCurrentWeatherByCoords(lat: number, lon: number): Promise<WeatherData> {
   const apiKey = process.env.NEXT_PUBLIC_WEATHER_API_KEY;
   if (apiKey) {
@@ -187,7 +200,7 @@ export async function fetchCurrentWeatherByCoords(lat: number, lon: number): Pro
       );
       if (res.ok) {
         const data = await res.json();
-        const [aqi] = await Promise.all([fetchAQI(lat, lon)]);
+        const [aqi, uv] = await Promise.all([fetchAQI(lat, lon), fetchUV(lat, lon)]);
         return {
           location: `${data.name}, ${data.sys.country}`,
           country: data.sys.country,
@@ -201,7 +214,7 @@ export async function fetchCurrentWeatherByCoords(lat: number, lon: number): Pro
           windSpeed: data.wind.speed * 3.6,
           windDirection: windDirections[Math.round((data.wind.deg || 0) / 45) % 8],
           visibility: (data.visibility || 10000) / 1000,
-          uvIndex: -1,
+          uvIndex: uv,
           aqi,
           sunrise: formatTimeWithOffset(data.sys.sunrise, data.timezone),
           sunset: formatTimeWithOffset(data.sys.sunset, data.timezone),
@@ -224,7 +237,7 @@ export async function fetchCurrentWeather(city: string): Promise<WeatherData> {
       );
       if (res.ok) {
         const data = await res.json();
-        const aqi = await fetchAQI(data.coord.lat, data.coord.lon);
+        const [aqi, uv] = await Promise.all([fetchAQI(data.coord.lat, data.coord.lon), fetchUV(data.coord.lat, data.coord.lon)]);
         return {
           location: `${data.name}, ${data.sys.country}`,
           country: data.sys.country,
@@ -238,7 +251,7 @@ export async function fetchCurrentWeather(city: string): Promise<WeatherData> {
           windSpeed: data.wind.speed * 3.6,
           windDirection: windDirections[Math.round((data.wind.deg || 0) / 45) % 8],
           visibility: (data.visibility || 10000) / 1000,
-          uvIndex: -1,
+          uvIndex: uv,
           aqi,
           sunrise: formatTimeWithOffset(data.sys.sunrise, data.timezone),
           sunset: formatTimeWithOffset(data.sys.sunset, data.timezone),
