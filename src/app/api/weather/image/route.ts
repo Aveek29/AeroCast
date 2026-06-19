@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
   if (cityName.length > 2) {
     try {
       const searchRes = await fetch(
-        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cityName.charAt(0).toUpperCase() + cityName.slice(1).toLowerCase()}`,
+        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cityName.charAt(0).toUpperCase() + cityName.slice(1).toLowerCase())}`,
         { headers: { "User-Agent": "AeroCast/1.0" }, signal: AbortSignal.timeout(3000) }
       );
       if (searchRes.ok) {
