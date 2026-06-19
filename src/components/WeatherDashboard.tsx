@@ -245,8 +245,8 @@ export default function WeatherDashboard() {
     { icon: Droplets, label: "Humidity", value: `${weather.humidity}%` } as StatTile,
     { icon: Thermometer, label: "Pressure", value: `${weather.pressure} hPa` } as StatTile,
     { icon: Eye, label: "Visibility", value: `${weather.visibility} km` } as StatTile,
-    { icon: Sun, label: "UV", value: `${weather.uvIndex}`, cls: (weather.uvIndex ?? 0) > 6 ? "text-orange-400" : (weather.uvIndex ?? 0) > 3 ? "text-yellow-400" : "" } as StatTile,
-    { icon: Gauge, label: "AQI", value: `${weather.aqi}`, cls: (weather.aqi ?? 0) > 100 ? "text-red-400" : (weather.aqi ?? 0) > 50 ? "text-yellow-400" : "text-emerald-400" } as StatTile,
+    { icon: Sun, label: "UV", value: weather.uvIndex > 0 ? `${weather.uvIndex}` : "N/A", cls: (weather.uvIndex ?? 0) > 6 ? "text-orange-400" : (weather.uvIndex ?? 0) > 3 ? "text-yellow-400" : "" } as StatTile,
+    { icon: Gauge, label: "AQI", value: weather.aqi > 0 ? `${weather.aqi === 1 ? "Good" : weather.aqi === 2 ? "Fair" : weather.aqi === 3 ? "Moderate" : weather.aqi === 4 ? "Poor" : "Very Poor"}` : "N/A", cls: (weather.aqi ?? 0) > 3 ? "text-red-400" : (weather.aqi ?? 0) > 1 ? "text-yellow-400" : "" } as StatTile,
     { icon: Sun, label: "Sunrise", value: weather.sunrise } as StatTile,
     { icon: Moon, label: "Sunset", value: weather.sunset } as StatTile,
   ] : [], [weather]);

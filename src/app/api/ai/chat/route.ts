@@ -110,6 +110,12 @@ async function basicReply(message: string, city?: string, weather?: BasicWeather
     if (uv > 7) reply = `UV index is very high (${uv})! SPF 50+ sunscreen required. Reapply every 2 hours. Wear a hat and sunglasses.`;
     else if (uv > 5) reply = `UV index is ${uv} — moderate to high. Apply SPF 30+ sunscreen and limit midday sun exposure.`;
     else reply = `UV levels are low (${uv}) today. Light sunscreen is fine if you're spending extended time outdoors.`;
+  } else if (/^(yes|yeah|yep|sure|okay|ok)$/.test(lower.trim())) {
+    reply = `Great! What would you like to know about the weather in ${city || "your area"}? I can help with activities, packing tips, or planning your day.`;
+  } else if (/^(no|nope|nah|not now)$/.test(lower.trim())) {
+    reply = `No problem! Just ask whenever you need weather advice for ${city || "your area"}.`;
+  } else if (lower.includes("thanks") || lower.includes("thank") || lower.includes("ty") || lower.includes("thx")) {
+    reply = `You're welcome! Stay safe and enjoy the ${cond.toLowerCase()} weather in ${city || "your area"}!`;
   } else if (lower.includes("hello") || lower.includes("hi ") || lower.includes("hey") || lower.includes("namaste") || lower.includes("hola") || lower.includes("bonjour")) {
     reply = `Hello! I'm SkyPulse AI. Current weather in ${city || "your area"}: ${cond}, ${temp}°C. Humidity ${humid}%, wind ${Math.round(wind)} km/h, rain ${rain}%. Ask me about activities, packing tips, or travel plans!`;
   } else if (lower.includes("pack") || lower.includes("wear") || lower.includes("clothes") || lower.includes("dress")) {
@@ -119,8 +125,13 @@ async function basicReply(message: string, city?: string, weather?: BasicWeather
     else if (temp > 12) reply = `Cool (${temp}°C): long sleeves, jeans or trousers, light jacket or hoodie. Closed shoes recommended.`;
     else reply = `Cold (${temp}°C): warm jacket or coat, layers, scarf, closed shoes. Gloves if below 5°C.`;
     if (rain > 40) reply += ` Also pack an umbrella (${rain}% rain chance).`;
-  } else if (lower.includes("today") || lower.includes("weather") || lower.includes("forecast") || /\b(?:how|what).*(?:weather|temp|climate|outside|today)\b/.test(lower)) {
-    reply = `Currently in ${city || "your area"}: ${cond}, ${temp}°C. Feels like ${temp}°C. Humidity ${humid}%, wind ${Math.round(wind)} km/h, UV ${uv}, rain ${rain}%. ${rain > 50 ? "Rain expected — carry an umbrella." : "Decent weather for most plans."}`;
+  } else if (lower.includes("today") || lower.includes("forecast") || lower.includes("climate") || lower.includes("outside") || /\b(?:how|what).*(?:weather|temp|climate|outside|today)\b/.test(lower)) {
+    const askedCity = lower.match(/weather\s+(?:in|of|at|for)\s+(\w[\w\s]*\w)/);
+    if (askedCity && !lower.includes(city?.toLowerCase() || "")) {
+      reply = `I can only show weather for ${city || "your area"} right now. Try searching for "${askedCity[1]}" in the search bar above!`;
+    } else {
+      reply = `Currently in ${city || "your area"}: ${cond}, ${temp}°C. Feels like ${temp}°C. Humidity ${humid}%, wind ${Math.round(wind)} km/h, UV ${uv > 0 ? uv : "N/A"}, rain ${rain}%. ${rain > 50 ? "Rain expected — carry an umbrella." : "Decent weather for most plans."}`;
+    }
   } else if (lower.includes("travel") || lower.includes("trip") || lower.includes("visit") || lower.includes("plan")) {
     if (rain > 60) reply = `Travel planning in ${city || "your area"}: Rainy conditions (${rain}%) expected. Best for indoor attractions, museums, and cafes. Morning hours are usually drier.`;
     else if (temp > 35) reply = `Travel in ${city || "your area"}: Very hot (${temp}°C). Plan outdoor activities for early morning or evening. Stay in AC during midday. Hydrate often.`;

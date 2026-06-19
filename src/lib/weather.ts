@@ -86,7 +86,7 @@ function generateMockCurrent(city: string): WeatherData {
     windDirection: pickRandom(windDirections),
     visibility: Math.round(randBetween(5, 20)),
     uvIndex: Math.round(randBetween(1, 11)),
-    aqi: Math.round(randBetween(15, 180)),
+    aqi: Math.round(randBetween(1, 5)),
     sunrise: "06:15 AM",
     sunset: "06:45 PM",
     icon: cond.icon,
@@ -163,6 +163,21 @@ function formatTimeWithOffset(epochSeconds: number, offsetSeconds: number): stri
   return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
 }
 
+async function fetchAQI(lat: number, lon: number): Promise<number> {
+  const apiKey = process.env.NEXT_PUBLIC_WEATHER_API_KEY;
+  if (!apiKey) return -1;
+  try {
+    const res = await fetch(
+      `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${apiKey}`
+    );
+    if (!res.ok) return -1;
+    const data = await res.json();
+    return data.list?.[0]?.main?.aqi ?? -1;
+  } catch {
+    return -1;
+  }
+}
+
 export async function fetchCurrentWeatherByCoords(lat: number, lon: number): Promise<WeatherData> {
   const apiKey = process.env.NEXT_PUBLIC_WEATHER_API_KEY;
   if (apiKey) {
@@ -172,6 +187,7 @@ export async function fetchCurrentWeatherByCoords(lat: number, lon: number): Pro
       );
       if (res.ok) {
         const data = await res.json();
+        const [aqi] = await Promise.all([fetchAQI(lat, lon)]);
         return {
           location: `${data.name}, ${data.sys.country}`,
           country: data.sys.country,
@@ -185,8 +201,8 @@ export async function fetchCurrentWeatherByCoords(lat: number, lon: number): Pro
           windSpeed: data.wind.speed * 3.6,
           windDirection: windDirections[Math.round((data.wind.deg || 0) / 45) % 8],
           visibility: (data.visibility || 10000) / 1000,
-          uvIndex: 5,
-          aqi: 1,
+          uvIndex: -1,
+          aqi,
           sunrise: formatTimeWithOffset(data.sys.sunrise, data.timezone),
           sunset: formatTimeWithOffset(data.sys.sunset, data.timezone),
           icon: `https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`,
@@ -208,6 +224,7 @@ export async function fetchCurrentWeather(city: string): Promise<WeatherData> {
       );
       if (res.ok) {
         const data = await res.json();
+        const aqi = await fetchAQI(data.coord.lat, data.coord.lon);
         return {
           location: `${data.name}, ${data.sys.country}`,
           country: data.sys.country,
@@ -221,8 +238,8 @@ export async function fetchCurrentWeather(city: string): Promise<WeatherData> {
           windSpeed: data.wind.speed * 3.6,
           windDirection: windDirections[Math.round((data.wind.deg || 0) / 45) % 8],
           visibility: (data.visibility || 10000) / 1000,
-          uvIndex: 5,
-          aqi: 1,
+          uvIndex: -1,
+          aqi,
           sunrise: formatTimeWithOffset(data.sys.sunrise, data.timezone),
           sunset: formatTimeWithOffset(data.sys.sunset, data.timezone),
           icon: `https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`,
