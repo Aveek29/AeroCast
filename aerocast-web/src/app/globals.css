@@ -1,0 +1,165 @@
+@import "tailwindcss";
+
+@property --bg-gradient-start {
+  syntax: "<color>"; inherits: true; initial-value: #0f172a;
+}
+@property --bg-gradient-end {
+  syntax: "<color>"; inherits: true; initial-value: #1e293b;
+}
+@property --accent {
+  syntax: "<color>"; inherits: true; initial-value: #38bdf8;
+}
+@property --accent-glow {
+  syntax: "<color>"; inherits: true; initial-value: rgba(56,189,248,0.2);
+}
+@property --card-bg {
+  syntax: "<color>"; inherits: true; initial-value: rgba(30,41,59,0.75);
+}
+@property --card-border {
+  syntax: "<color>"; inherits: true; initial-value: rgba(255,255,255,0.08);
+}
+
+:root {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card-bg: rgba(30, 41, 59, 0.75);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --accent: #38bdf8;
+  --accent-glow: rgba(56, 189, 248, 0.2);
+  --bg-gradient-start: #0f172a;
+  --bg-gradient-end: #1e293b;
+  --atmo-opacity: 0;
+  transition: --bg-gradient-start 3s ease, --bg-gradient-end 3s ease,
+    --accent 3s ease, --accent-glow 3s ease,
+    --card-bg 3s ease, --card-border 3s ease;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card-bg: var(--card-bg);
+  --color-card-border: var(--card-border);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: linear-gradient(175deg, var(--bg-gradient-start), var(--bg-gradient-end));
+  background-attachment: fixed;
+  background-size: cover;
+  color: var(--foreground);
+  font-family: var(--font-sans), sans-serif;
+  min-height: 100vh;
+  margin: 0;
+  transition: background 3s ease, color 3s ease;
+}
+
+.glass-card, .stat-tile, nav, .atmo-transition,
+.glass-card *, .stat-tile * {
+  transition: background-color 3s ease, border-color 3s ease, box-shadow 3s ease;
+}
+
+/* ── Layer system ── */
+.atmosphere-sky { z-index: 0; }
+.atmosphere-effects { z-index: 1; }
+.atmosphere-particles { z-index: 2; }
+.atmosphere-content { z-index: 10; }
+
+/* ── Glass card ── */
+.glass-card {
+  background: var(--card-bg);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  border-radius: 1.5rem;
+  transition: background 3s ease, border-color 3s ease, box-shadow 3s ease;
+}
+.glass-card:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 0 24px var(--accent-glow);
+}
+
+/* ── Stat tile ── */
+.stat-tile {
+  background: var(--card-bg);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--card-border);
+  border-radius: 1rem;
+  padding: 1rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  transition: all 0.2s ease, background 3s ease, border-color 3s ease;
+}
+.stat-tile:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+/* ── Glow line ── */
+@keyframes border-glow {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.7; }
+}
+.glow-line {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: border-glow 3s ease-in-out infinite;
+}
+
+/* ── Stars layer ── */
+.stars-layer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.stars-layer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 25% 45%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1.5px 1.5px at 40% 10%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1px 1px at 55% 70%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 70% 30%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1.5px 1.5px at 85% 60%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 15% 80%, rgba(255,255,255,0.4), transparent),
+    radial-gradient(1px 1px at 90% 15%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1px 1px at 50% 50%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1.5px 1.5px at 5% 55%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 60% 90%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1px 1px at 35% 35%, rgba(255,255,255,0.4), transparent),
+    radial-gradient(1px 1px at 80% 80%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1.5px 1.5px at 45% 5%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 20% 65%, rgba(255,255,255,0.3), transparent);
+  animation: twinkle 4s ease-in-out infinite alternate;
+}
+@keyframes twinkle {
+  0% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
+
+/* ── Focus ── */
+input:focus { outline: none; box-shadow: 0 0 0 2px var(--accent); }
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  body, * { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+  .stars-layer::before { animation: none; }
+  .glow-line { animation: none; opacity: 0.3; }
+  .stat-tile:hover { transform: none; }
+}

@@ -1,0 +1,67 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# testing
+coverage/
+
+# next.js build output
+.next/
+out/
+build/
+
+# production archives
+*.zip
+*.tar.gz
+
+# environment variables (contains API keys)
+.env
+.env.local
+.env.production
+.env.development
+.env.*.local
+
+# env template (not the actual keys)
+.env.example
+
+# debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# AWS Elastic Beanstalk
+.elasticbeanstalk/
+eb-python/
+Dockerrun.aws.json
+beanstalk-*.zip
+
+# Vercel
+.vercel
+
+# Railway / Render / Fly.io
+.railway/
+.render/
+
+# Sentry
+.sentryclirc
+
+# turbo
+.turbo
