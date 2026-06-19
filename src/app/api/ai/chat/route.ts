@@ -115,14 +115,14 @@ async function basicReply(message: string, city?: string, weather?: BasicWeather
     else if (temp > 12) reply = `Cool (${temp}°C): long sleeves, jeans or trousers, light jacket or hoodie. Closed shoes recommended.`;
     else reply = `Cold (${temp}°C): warm jacket or coat, layers, scarf, closed shoes. Gloves if below 5°C.`;
     if (rain > 40) reply += ` Also pack an umbrella (${rain}% rain chance).`;
-  } else if (lower.includes("today") || lower.includes("weather") || lower.includes("forecast") || lower.includes("how") || lower.includes("what")) {
+  } else if (lower.includes("today") || lower.includes("weather") || lower.includes("forecast") || /\b(?:how|what).*(?:weather|temp|climate|outside|today)\b/.test(lower)) {
     reply = `Currently in ${city || "your area"}: ${cond}, ${temp}°C. Feels like ${temp}°C. Humidity ${humid}%, wind ${Math.round(wind)} km/h, UV ${uv}, rain ${rain}%. ${rain > 50 ? "Rain expected — carry an umbrella." : "Decent weather for most plans."}`;
   } else if (lower.includes("travel") || lower.includes("trip") || lower.includes("visit") || lower.includes("plan")) {
     if (rain > 60) reply = `Travel planning in ${city || "your area"}: Rainy conditions (${rain}%) expected. Best for indoor attractions, museums, and cafes. Morning hours are usually drier.`;
     else if (temp > 35) reply = `Travel in ${city || "your area"}: Very hot (${temp}°C). Plan outdoor activities for early morning or evening. Stay in AC during midday. Hydrate often.`;
     else reply = `Travel in ${city || "your area"}: Good weather (${temp}°C, ${cond.toLowerCase()}). Great for sightseeing and outdoor activities.`;
   } else {
-    reply = `In ${city || "your area"} right now: ${cond}, ${temp}°C, wind ${Math.round(wind)} km/h, rain ${rain}%. ${rain > 50 ? "Rain likely." : "Fair conditions."} Ask me about packing, activities, sunscreen, or travel plans!`;
+    reply = `I'm a weather assistant, so I can only help with weather, travel, and activity questions for ${city || "your area"}. Try: "should I carry an umbrella?", "packing tips", "best time to go out", or "plan a trip".`;
   }
 
   return NextResponse.json({ success: true, reply });
