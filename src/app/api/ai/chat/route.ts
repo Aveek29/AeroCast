@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const GROQ_API = "https://api.groq.com/openai/v1/chat/completions";
-const MODELS = ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "llama3-70b-8192"];
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,37 +39,33 @@ Your role:
       { role: "user", content: message },
     ];
 
-    let lastErr = "";
-    for (const model of MODELS) {
-      try {
-        const res = await fetch(GROQ_API, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${groqKey}`,
-          },
-          body: JSON.stringify({
-            model,
-            messages,
-            temperature: 0.7,
-            max_tokens: 500,
-          }),
-        });
+    try {
+      const res = await fetch(GROQ_API, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${groqKey}`,
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages,
+          temperature: 0.7,
+          max_tokens: 500,
+        }),
+      });
 
-        if (!res.ok) {
-          lastErr = `Groq ${model} returned ${res.status}`;
-          continue;
-        }
-
-        const data = await res.json();
-        const reply = data.choices?.[0]?.message?.content || "";
-        if (reply) return NextResponse.json({ success: true, reply });
-      } catch (e) {
-        lastErr = `Groq ${model} fetch failed: ${e}`;
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error("Groq API error:", res.status, errText);
+        return basicReply(message, city, weather);
       }
-    }
 
-    if (lastErr) console.error("Chatbot fallback to basicReply:", lastErr);
+      const data = await res.json();
+      const reply = data.choices?.[0]?.message?.content || "";
+      if (reply) return NextResponse.json({ success: true, reply });
+    } catch (e) {
+      console.error("Groq fetch failed:", e);
+    }
     return basicReply(message, city, weather);
   } catch {
     return NextResponse.json(
