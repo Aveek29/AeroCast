@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, memo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Bot, User, Loader2, Languages } from "lucide-react";
+import { Send, Bot, User, Loader2, Languages, Trash2, X, MessageSquare } from "lucide-react";
 import type { WeatherData } from "@/lib/weather";
 
 interface Message {
@@ -61,15 +61,23 @@ function Chatbot({ city, weather, rainProbability }: ChatbotProps) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [showLang, setShowLang] = useState(false);
+  const [minimized, setMinimized] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const historyRef = useRef<Message[]>([]);
 
   useEffect(() => {
     const el = containerRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
-  const historyRef = useRef<Message[]>([]);
+  const resetChat = useCallback(() => {
+    setMessages([
+      { role: "assistant", content: greetings[lang] },
+      ...examplePairs,
+    ]);
+    historyRef.current = [];
+  }, [lang]);
 
   const sendMessage = useCallback(async (msg?: string) => {
     const text = msg ?? input.trim();
@@ -112,7 +120,7 @@ function Chatbot({ city, weather, rainProbability }: ChatbotProps) {
   }
 
   return (
-    <div className="bg-[var(--card-bg)] border border-[var(--card-border)] backdrop-blur-xl rounded-3xl flex flex-col overflow-hidden shadow-2xl h-[400px] sm:h-[420px] md:h-[520px]">
+    <div className={`bg-[var(--card-bg)] border border-[var(--card-border)] backdrop-blur-xl rounded-3xl flex flex-col overflow-hidden shadow-2xl ${minimized ? "h-auto" : "h-[400px] sm:h-[420px] md:h-[520px]"}`}>
       <div className="shrink-0 p-3 md:p-4 border-b border-[var(--card-border)] bg-black/10 flex items-center justify-between">
         <div className="flex items-center gap-2 md:gap-3">
           <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[var(--accent)] flex items-center justify-center text-white">
@@ -123,24 +131,35 @@ function Chatbot({ city, weather, rainProbability }: ChatbotProps) {
             <span className="text-[9px] md:text-[10px] opacity-70 font-medium uppercase tracking-wider">Travel Assistant</span>
           </div>
         </div>
-        <div className="relative">
-          <button type="button" onClick={() => setShowLang(!showLang)} className="flex items-center gap-1 bg-white/10 hover:bg-white/20 rounded-full px-2 py-1 md:px-2.5 md:py-1.5 text-xs transition-colors">
-            <Languages className="w-3 h-3 md:w-3.5 md:h-3.5" />
-            <span>{languages.find((l) => l.code === lang)?.flag}</span>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={resetChat} title="New chat"
+            className="flex items-center gap-1 bg-white/10 hover:bg-white/20 rounded-full p-1.5 md:p-2 text-xs transition-colors">
+            <Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
           </button>
-          {showLang && (
-            <div className="absolute right-0 top-full mt-1 bg-gray-900 border border-white/10 rounded-xl p-1.5 shadow-2xl z-20 grid grid-cols-2 gap-1 w-40 md:w-44">
-              {languages.map((l) => (
-                <button key={l.code} type="button" onClick={() => { setLang(l.code); setMessages([{ role: "assistant", content: greetings[l.code] }, ...examplePairs]); setShowLang(false); }}
-                  className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors ${lang === l.code ? "bg-[var(--accent)] text-white" : "hover:bg-white/10"}`}>
-                  <span>{l.flag}</span><span className="truncate">{l.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          <button type="button" onClick={() => setMinimized(!minimized)} title={minimized ? "Expand" : "Minimize"}
+            className="flex items-center gap-1 bg-white/10 hover:bg-white/20 rounded-full p-1.5 md:p-2 text-xs transition-colors">
+            {minimized ? <MessageSquare className="w-3 h-3 md:w-3.5 md:h-3.5" /> : <X className="w-3 h-3 md:w-3.5 md:h-3.5" />}
+          </button>
+          <div className="relative">
+            <button type="button" onClick={() => setShowLang(!showLang)} className="flex items-center gap-1 bg-white/10 hover:bg-white/20 rounded-full px-2 py-1 md:px-2.5 md:py-1.5 text-xs transition-colors">
+              <Languages className="w-3 h-3 md:w-3.5 md:h-3.5" />
+              <span>{languages.find((l) => l.code === lang)?.flag}</span>
+            </button>
+            {showLang && (
+              <div className="absolute right-0 top-full mt-1 bg-gray-900 border border-white/10 rounded-xl p-1.5 shadow-2xl z-20 grid grid-cols-2 gap-1 w-40 md:w-44">
+                {languages.map((l) => (
+                  <button key={l.code} type="button" onClick={() => { setLang(l.code); setMessages([{ role: "assistant", content: greetings[l.code] }, ...examplePairs]); historyRef.current = []; setShowLang(false); }}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors ${lang === l.code ? "bg-[var(--accent)] text-white" : "hover:bg-white/10"}`}>
+                    <span>{l.flag}</span><span className="truncate">{l.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
+      {!minimized && (
       <div ref={containerRef} className="flex-1 overflow-y-auto overscroll-contain scroll-smooth p-3 md:p-4 space-y-3 md:space-y-4">
         <AnimatePresence initial={false}>
           {messages.map((msg, i) => (
@@ -173,6 +192,7 @@ function Chatbot({ city, weather, rainProbability }: ChatbotProps) {
           )}
         </AnimatePresence>
       </div>
+      )}
 
       <div className="shrink-0 p-2.5 md:p-3 border-t border-[var(--card-border)] bg-black/20">
         <div className="flex gap-1.5 md:gap-2 mb-2 overflow-x-auto pb-1">
