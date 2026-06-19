@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
   try {
     const { message, city, weather, history, lang: rawLang } = await request.json() as { message: string; city?: string; weather?: BasicWeather; history?: { role: string; content: string }[]; lang?: string };
     const lang = rawLang || "en";
-    const groqKey = process.env.GROQ_API_KEY;
+    const groqKey = process.env.NEXT_PUBLIC_GROQ_API_KEY;
 
     if (!groqKey) {
       const { reply } = await basicReply(message, city, weather).then(r => r.json());

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const groqKey = process.env.GROQ_API_KEY;
+  const groqKey = process.env.NEXT_PUBLIC_GROQ_API_KEY;
   if (!groqKey) {
-    const hasGroq = "GROQ_API_KEY" in process.env;
-    return NextResponse.json({ configured: false, status: "GROQ_API_KEY not set", inProcessEnv: hasGroq, groqValueLength: hasGroq ? (process.env.GROQ_API_KEY || "").length : 0 });
+    const hasGroq = "NEXT_PUBLIC_GROQ_API_KEY" in process.env;
+    return NextResponse.json({ configured: false, status: "GROQ_API_KEY not set", inProcessEnv: hasGroq, groqValueLength: hasGroq ? (process.env.NEXT_PUBLIC_GROQ_API_KEY || "").length : 0 });
   }
 
   try {
