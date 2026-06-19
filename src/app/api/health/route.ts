@@ -7,6 +7,7 @@ export async function GET() {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     service: "AeroCast Weather Intelligence",
-    version: "1.0.0",
+    version: "1.0.1",
+    nodeEnv: process.env.NODE_ENV,
   });
 }
