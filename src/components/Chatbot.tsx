@@ -72,10 +72,7 @@ function Chatbot({ city, weather, rainProbability }: ChatbotProps) {
   }, [messages]);
 
   const resetChat = useCallback(() => {
-    setMessages([
-      { role: "assistant", content: greetings[lang] },
-      ...examplePairs,
-    ]);
+    setMessages([{ role: "assistant", content: greetings[lang] }]);
     historyRef.current = [];
   }, [lang]);
 
