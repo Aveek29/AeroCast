@@ -9,7 +9,8 @@ export async function POST(request: NextRequest) {
     const groqKey = process.env.GROQ_API_KEY;
 
     if (!groqKey) {
-      return basicReply(message, city, weather);
+      const { reply } = await basicReply(message, city, weather).then(r => r.json());
+      return NextResponse.json({ success: true, debug: "groq_key_missing", reply });
     }
 
     const langName: Record<string, string> = { en: "English", hi: "Hindi", es: "Spanish", fr: "French", de: "German", zh: "Chinese", ar: "Arabic", ja: "Japanese" };
@@ -57,16 +58,20 @@ Your role:
       if (!res.ok) {
         const errText = await res.text();
         console.error("Groq API error:", res.status, errText);
-        return basicReply(message, city, weather);
+        const { reply } = await basicReply(message, city, weather).then(r => r.json());
+        return NextResponse.json({ success: true, debug: "groq_api_error", groqStatus: res.status, groqDetail: errText.slice(0, 300), reply });
       }
 
       const data = await res.json();
       const reply = data.choices?.[0]?.message?.content || "";
       if (reply) return NextResponse.json({ success: true, reply });
+      const { reply: br } = await basicReply(message, city, weather).then(r => r.json());
+      return NextResponse.json({ success: true, debug: "groq_empty_reply", reply: br });
     } catch (e) {
       console.error("Groq fetch failed:", e);
+      const { reply } = await basicReply(message, city, weather).then(r => r.json());
+      return NextResponse.json({ success: true, debug: "groq_fetch_error", groqDetail: String(e).slice(0, 300), reply });
     }
-    return basicReply(message, city, weather);
   } catch {
     return NextResponse.json(
       { success: false, error: "Failed to process chat" },
