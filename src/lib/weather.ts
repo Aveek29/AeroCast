@@ -69,9 +69,17 @@ function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function generateMockCurrent(city: string): WeatherData {
+function hashCoord(s: string, seed: number): number {
+  let h = seed;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return Math.abs(h % 360) - 180;
+}
+
+function generateMockCurrent(city: string, coordLat?: number, coordLon?: number): WeatherData {
   const cond = pickRandom(conditions);
   const temp = randBetween(18, 38);
+  const lat = coordLat ?? hashCoord(city, 13);
+  const lon = coordLon ?? hashCoord(city, 7);
   return {
     location: city,
     country: "IN",
@@ -90,8 +98,8 @@ function generateMockCurrent(city: string): WeatherData {
     sunrise: "06:15 AM",
     sunset: "06:45 PM",
     icon: cond.icon,
-    lat: 19.076,
-    lon: 72.8777,
+    lat,
+    lon,
   };
 }
 
@@ -225,7 +233,7 @@ export async function fetchCurrentWeatherByCoords(lat: number, lon: number): Pro
       }
     } catch {}
   }
-  return generateMockCurrent(`${lat}, ${lon}`);
+  return generateMockCurrent(`${lat}, ${lon}`, lat, lon);
 }
 
 export async function fetchCurrentWeather(city: string): Promise<WeatherData> {
