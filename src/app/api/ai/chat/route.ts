@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const GROQ_API = "https://api.groq.com/openai/v1/chat/completions";
+const MODELS = ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "llama3-70b-8192"];
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,10 +16,6 @@ export async function POST(request: NextRequest) {
     const langName: Record<string, string> = { en: "English", hi: "Hindi", es: "Spanish", fr: "French", de: "German", zh: "Chinese", ar: "Arabic", ja: "Japanese" };
     const temp = weather?.temperature ?? "N/A";
     const cond = weather?.condition ?? "N/A";
-    const humid = weather?.humidity ?? "N/A";
-    const wind = weather?.windSpeed ?? "N/A";
-    const uv = weather?.uvIndex ?? "N/A";
-    const rain = weather?.rainProbability ?? "N/A";
 
     const systemPrompt = `You are SkyPulse AI, a multilingual weather-intelligent travel assistant for AeroCast.
 
@@ -26,10 +23,6 @@ Current weather context:
 - Location: ${city || "Unknown"}
 - Temperature: ${temp}°C
 - Condition: ${cond}
-- Humidity: ${humid}%
-- Wind: ${wind} km/h
-- UV Index: ${uv}
-- Rain Probability: ${rain}%
 
 CRITICAL: Respond in ${langName[lang] || "English"}. Use the language code "${lang}" to decide.
 
@@ -47,27 +40,38 @@ Your role:
       { role: "user", content: message },
     ];
 
-    const res = await fetch(GROQ_API, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${groqKey}`,
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages,
-        temperature: 0.7,
-        max_tokens: 500,
-      }),
-    });
+    let lastErr = "";
+    for (const model of MODELS) {
+      try {
+        const res = await fetch(GROQ_API, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${groqKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature: 0.7,
+            max_tokens: 500,
+          }),
+        });
 
-    if (!res.ok) {
-      return basicReply(message, city, weather);
+        if (!res.ok) {
+          lastErr = `Groq ${model} returned ${res.status}`;
+          continue;
+        }
+
+        const data = await res.json();
+        const reply = data.choices?.[0]?.message?.content || "";
+        if (reply) return NextResponse.json({ success: true, reply });
+      } catch (e) {
+        lastErr = `Groq ${model} fetch failed: ${e}`;
+      }
     }
 
-    const data = await res.json();
-    const reply = data.choices?.[0]?.message?.content || "";
-    return NextResponse.json({ success: true, reply });
+    if (lastErr) console.error("Chatbot fallback to basicReply:", lastErr);
+    return basicReply(message, city, weather);
   } catch {
     return NextResponse.json(
       { success: false, error: "Failed to process chat" },

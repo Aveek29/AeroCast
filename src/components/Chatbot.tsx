@@ -69,11 +69,15 @@ function Chatbot({ city, weather, rainProbability }: ChatbotProps) {
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
+  const historyRef = useRef<Message[]>([]);
+
   const sendMessage = useCallback(async (msg?: string) => {
     const text = msg ?? input.trim();
     if (!text || loading) return;
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    const userMsg: Message = { role: "user", content: text };
+    historyRef.current.push(userMsg);
+    setMessages((prev) => [...prev, userMsg]);
     setLoading(true);
     try {
       const res = await fetch("/api/ai/chat", {
@@ -81,6 +85,7 @@ function Chatbot({ city, weather, rainProbability }: ChatbotProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: text, city, lang,
+          history: historyRef.current.slice(-8),
           weather: weather ? {
             temperature: weather.temperature, condition: weather.condition,
             humidity: weather.humidity, windSpeed: weather.windSpeed,
@@ -89,9 +94,13 @@ function Chatbot({ city, weather, rainProbability }: ChatbotProps) {
         }),
       });
       const data = await res.json();
-      setMessages((prev) => [...prev, { role: "assistant", content: data.reply || "Sorry, I couldn't process that." }]);
+      const reply = data.reply || "Sorry, I couldn't process that.";
+      historyRef.current.push({ role: "assistant", content: reply });
+      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
     } catch {
-      setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I'm having trouble connecting. Please try again." }]);
+      const fallback = "Sorry, I'm having trouble connecting. Please try again.";
+      historyRef.current.push({ role: "assistant", content: fallback });
+      setMessages((prev) => [...prev, { role: "assistant", content: fallback }]);
     } finally {
       setLoading(false);
       inputRef.current?.focus({ preventScroll: true });
