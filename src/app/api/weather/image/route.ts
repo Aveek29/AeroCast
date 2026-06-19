@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const metaCache = new Map<string, { imageUrl: string | null; description: string | null }>();
+interface CacheEntry {
+  imageUrl: string | null;
+  description: string | null;
+}
+
+const metaCache = new Map<string, CacheEntry>();
 const META_TTL = 1000 * 60 * 60;
 const MAX_CACHE = 200;
 
@@ -11,34 +16,27 @@ function trimCache() {
   }
 }
 
+async function fetchAsBase64(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "AeroCast/1.0", Referer: "https://en.wikipedia.org/" },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return null;
+    const contentType = res.headers.get("content-type") || "image/jpeg";
+    const buf = await res.arrayBuffer();
+    const base64 = Buffer.from(buf).toString("base64");
+    return `data:${contentType};base64,${base64}`;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const city = searchParams.get("city");
-  const mode = searchParams.get("mode");
 
   if (!city) return NextResponse.json({ imageUrl: null }, { status: 400 });
-
-  if (mode === "proxy" && searchParams.has("url")) {
-    const imgUrl = searchParams.get("url")!;
-    try {
-      const imgRes = await fetch(imgUrl, {
-        headers: { "User-Agent": "AeroCast/1.0", Referer: "https://en.wikipedia.org/" },
-        signal: AbortSignal.timeout(6000),
-      });
-      if (!imgRes.ok) return new NextResponse(null, { status: imgRes.status });
-      const blob = await imgRes.arrayBuffer();
-      const contentType = imgRes.headers.get("content-type") || "image/jpeg";
-      return new NextResponse(blob, {
-        headers: {
-          "Content-Type": contentType,
-          "Cache-Control": "public, max-age=86400, stale-while-revalidate=86400",
-          "Access-Control-Allow-Origin": "*",
-        },
-      });
-    } catch {
-      return new NextResponse(null, { status: 502 });
-    }
-  }
 
   const cached = metaCache.get(city);
   if (cached) {
@@ -49,7 +47,6 @@ export async function GET(request: NextRequest) {
 
   const cityName = city.split(",")[0].trim();
   const searchNames = [cityName, `${cityName} city`, cityName.replace(/\s\(.*\)/, "")].filter((n, i, a) => a.indexOf(n) === i);
-  const origin = request.nextUrl.origin;
 
   for (const name of searchNames) {
     try {
@@ -62,9 +59,10 @@ export async function GET(request: NextRequest) {
       if (!data) continue;
       const rawUrl = data?.originalimage?.source || data?.thumbnail?.source || null;
       if (rawUrl) {
-        const proxyUrl = `${origin}/api/weather/image?city=${encodeURIComponent(city)}&mode=proxy&url=${encodeURIComponent(rawUrl)}`;
+        const dataUrl = await fetchAsBase64(rawUrl);
+        if (!dataUrl) continue;
         const description = data?.description || data?.extract || null;
-        const result = { imageUrl: proxyUrl, description };
+        const result: CacheEntry = { imageUrl: dataUrl, description };
         metaCache.set(city, result);
         trimCache();
         setTimeout(() => metaCache.delete(city), META_TTL);
