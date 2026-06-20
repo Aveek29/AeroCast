@@ -77,7 +77,9 @@ export default function WeatherDashboard() {
   const [error, setError] = useState("");
   const [locating, setLocating] = useState(false);
   const [cityImage, setCityImage] = useState<string | null>(null);
+  const [prevCityImage, setPrevCityImage] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
@@ -97,22 +99,48 @@ export default function WeatherDashboard() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const fetchCityImage = useCallback(async (city: string) => {
+  const cityRef = useRef<string>("");
+  const fetchCityImage = useCallback(async (city: string, country?: string) => {
     if (!city) return;
-    const cached = imageCache.current.get(city);
-    if (cached) { setCityImage(cached); return; }
-    setImageLoading(true);
-    try {
-      const res = await fetch(`/api/weather/image?city=${encodeURIComponent(city)}`);
-      const data = await res.json();
-      if (data.imageUrl) {
-        imageCache.current.set(city, data.imageUrl);
-        setCityImage(data.imageUrl);
-      } else {
-        setCityImage(null);
+    const cacheKey = country ? `${city}|${country}` : city;
+    const cached = imageCache.current.get(cacheKey);
+    const cityStr = `${city}|${country || ""}`;
+
+    if (cityRef.current !== cityStr) {
+      setImageError(false);
+      cityRef.current = cityStr;
+      if (cached) {
+        setCityImage(cached);
+        return;
       }
-    } catch { setCityImage(null); }
-    finally { setImageLoading(false); }
+      setCityImage(null);
+      setImageLoading(true);
+      try {
+        const params = new URLSearchParams({ city });
+        if (country) params.set("country", country);
+        const res = await fetch(`/api/weather/image?${params.toString()}`);
+        const data = await res.json();
+        if (data.imageUrl) {
+          imageCache.current.set(cacheKey, data.imageUrl);
+          setCityImage(data.imageUrl);
+        } else {
+          setCityImage(null);
+        }
+      } catch { setCityImage(null); }
+      finally { setImageLoading(false); }
+    }
+  }, []);
+
+  const reverseGeocode = useCallback(async (lat: number, lon: number): Promise<string | null> => {
+    try {
+      const res = await fetch(`/api/weather/geocode?q=${lat},${lon}&reverse=1`);
+      const data = await res.json();
+      if (data.matches?.length > 0) {
+        const m = data.matches[0];
+        return m.displayName;
+      }
+      return null;
+    } catch { return null; }
   }, []);
 
   const fetchByCoords = useCallback(async (lat: number, lon: number, label?: string) => {
@@ -128,16 +156,21 @@ export default function WeatherDashboard() {
       const w = await wr.json();
       const f = await fr.json();
       if (w.success) {
-        const cityName = label ? label.split(",")[0].trim() : null;
-        const weatherData = cityName ? { ...w.data, location: `${cityName}, ${w.data.country}` } : w.data;
+        const country = w.data.country;
+        let cityName = label ? label.split(",")[0].trim() : null;
+        if (!cityName) {
+          const rev = await reverseGeocode(lat, lon);
+          if (rev) cityName = rev.split(",")[0].trim();
+        }
+        const weatherData = cityName ? { ...w.data, location: `${cityName}, ${country}` } : w.data;
         setWeather(weatherData);
         updateWeather(weatherData);
-        fetchCityImage(cityName || weatherData.location || `${lat},${lon}`);
+        fetchCityImage(cityName || weatherData.location || `${lat},${lon}`, country);
       } else setError(w.error || "Could not load weather");
       if (f.success) setForecast(f.data);
     } catch { setError("Failed to fetch weather"); }
     finally { setLoading(false); }
-  }, [updateWeather, fetchCityImage]);
+  }, [updateWeather, fetchCityImage, reverseGeocode]);
 
   const fetchData = useCallback(async (c: string) => {
     setLoading(true);
@@ -151,7 +184,7 @@ export default function WeatherDashboard() {
       ]);
       const w = await wr.json();
       const f = await fr.json();
-      if (w.success) { setWeather(w.data); updateWeather(w.data); fetchCityImage(c); }
+      if (w.success) { setWeather(w.data); updateWeather(w.data); fetchCityImage(c, w.data.country); }
       else setError(w.error || "Could not load weather");
       if (f.success) setForecast(f.data);
     } catch { setError("Failed to fetch weather"); }
@@ -197,10 +230,12 @@ export default function WeatherDashboard() {
     } else {
       const exact = matches.find((m) => m.name.toLowerCase() === q.toLowerCase() || m.displayName.toLowerCase() === q.toLowerCase());
       const capital = matches.find((m) => m.isCapital);
-      if (exact && (exact.lat || exact.lon)) {
-        if (exact.lat) { fetchByCoords(exact.lat, exact.lon, exact.displayName); } else { fetchData(exact.displayName); }
-      } else if (capital && (capital.lat || capital.lon)) {
-        if (capital.lat) { fetchByCoords(capital.lat, capital.lon, capital.displayName); } else { fetchData(capital.displayName); }
+      const useExact = exact && (exact.lat !== undefined && exact.lon !== undefined);
+      const useCapital = !useExact && capital && (capital.lat !== undefined && capital.lon !== undefined);
+      if (useExact) {
+        fetchByCoords(exact.lat, exact.lon, exact.displayName);
+      } else if (useCapital) {
+        fetchByCoords(capital.lat, capital.lon, capital.displayName);
       } else {
         setSuggestions(matches);
         setShowSuggestions(true);
@@ -212,7 +247,7 @@ export default function WeatherDashboard() {
     setShowSuggestions(false);
     setSuggestions([]);
     setQuery(m.displayName);
-    if (m.lat && m.lon) {
+    if (m.lat !== undefined && m.lon !== undefined && (m.lat !== 0 || m.lon !== 0)) {
       fetchByCoords(m.lat, m.lon, m.displayName);
     } else {
       fetchData(`${m.name}, ${m.country}`);
@@ -352,11 +387,12 @@ export default function WeatherDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5 min-h-[300px] lg:min-h-[520px]">
         <div className="lg:col-span-2 space-y-5">
           <div className="glass-card p-4 md:p-6 flex flex-row items-center justify-between relative overflow-hidden min-h-[120px] sm:min-h-[150px]">
-            {cityImage && !imageLoading && (
-              <img src={cityImage} alt="" className="absolute inset-0 w-full h-full object-cover"
-                onError={() => setCityImage(null)} />
+            {cityImage && !imageError && (
+              <img key={cityRef.current} src={cityImage} alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+                onError={() => setImageError(true)} />
             )}
-            {cityImage && !imageLoading && <div className="absolute inset-0 bg-gradient-to-r from-[var(--card-bg)]/95 via-[var(--card-bg)]/60 to-[var(--card-bg)]/30" />}
+            {cityImage && !imageError && <div className="absolute inset-0 bg-gradient-to-r from-[var(--card-bg)]/95 via-[var(--card-bg)]/60 to-[var(--card-bg)]/30" />}
             <div className="glow-line" />
             <div className="relative z-10 text-center sm:text-left">
               <span className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tighter leading-none">

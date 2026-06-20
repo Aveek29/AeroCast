@@ -16,29 +16,61 @@ function trimCache() {
   }
 }
 
-async function fetchAsBase64(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": "AeroCast/1.0", Referer: "https://en.wikipedia.org/" },
-      signal: AbortSignal.timeout(6000),
-    });
-    if (!res.ok) return null;
-    const contentType = res.headers.get("content-type") || "image/jpeg";
-    const buf = await res.arrayBuffer();
-    const base64 = Buffer.from(buf).toString("base64");
-    return `data:${contentType};base64,${base64}`;
-  } catch {
-    return null;
+const UA = "AeroCast/1.0";
+
+async function searchAndThumb(query: string): Promise<{ url: string; desc: string | null } | null> {
+  const params = new URLSearchParams({
+    action: "query",
+    generator: "search",
+    gsrsearch: query,
+    gsrlimit: "5",
+    prop: "pageimages|pageprops",
+    piprop: "thumbnail",
+    pithumbsize: "600",
+    format: "json",
+  });
+  const res = await fetch(`https://en.wikipedia.org/w/api.php?${params}`, {
+    headers: { "User-Agent": UA },
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!res.ok) return null;
+  const data = await res.json() as any;
+  const pages = data?.query?.pages;
+  if (!pages) return null;
+
+  const sorted = Object.values(pages).sort((a: any, b: any) => a.index - b.index);
+  for (const raw of sorted) {
+    const p = raw as { pageprops?: { disambiguation?: string }; thumbnail?: { source?: string }; description?: string; index?: number };
+    if (p.pageprops?.disambiguation) continue;
+    const src = p.thumbnail?.source;
+    if (!src) continue;
+    return { url: src, desc: p.description || null };
   }
+  return null;
+}
+
+async function summaryThumb(title: string): Promise<{ url: string; desc: string | null } | null> {
+  const res = await fetch(
+    `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`,
+    { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(5000) }
+  );
+  if (!res.ok) return null;
+  const data = await res.json() as any;
+  if (data.type === "disambiguation") return null;
+  const src: string | undefined = data?.thumbnail?.source || data?.originalimage?.source || undefined;
+  if (!src) return null;
+  return { url: src, desc: data.description || data.extract || null };
 }
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const city = searchParams.get("city");
+  const country = searchParams.get("country");
 
   if (!city) return NextResponse.json({ imageUrl: null }, { status: 400 });
 
-  const cached = metaCache.get(city);
+  const cacheKey = country ? `${city}|${country}` : city;
+  const cached = metaCache.get(cacheKey);
   if (cached) {
     return NextResponse.json(cached, {
       headers: { "Cache-Control": "private, max-age=300", "X-Cache": "HIT" },
@@ -46,60 +78,36 @@ export async function GET(request: NextRequest) {
   }
 
   const cityName = city.split(",")[0].trim();
-  const searchNames = [cityName, `${cityName} city`, `${cityName}, ${cityName.replace(/\s\(.*\)/, "")}`].filter((n, i, a) => a.indexOf(n) === i);
-
-  async function tryPage(name: string): Promise<{ rawUrl: string; description: string | null } | null> {
-    try {
-      const res = await fetch(
-        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}`,
-        { headers: { "User-Agent": "AeroCast/1.0" }, signal: AbortSignal.timeout(3000) }
-      );
-      if (!res.ok) return null;
-      const data = await res.json();
-      if (!data) return null;
-      const rawUrl = data?.originalimage?.source || data?.thumbnail?.source || null;
-      if (!rawUrl) return null;
-      return { rawUrl, description: data?.description || data?.extract || null };
-    } catch { return null; }
+  const countryName = country?.split(",")[0].trim();
+  const queries = [cityName];
+  if (countryName && !cityName.toLowerCase().includes(countryName.toLowerCase())) {
+    queries.push(`${cityName}, ${countryName}`);
   }
 
-  for (const name of searchNames) {
-    const page = await tryPage(name);
-    if (!page) continue;
-    const dataUrl = await fetchAsBase64(page.rawUrl);
-    if (!dataUrl) continue;
-    const result: CacheEntry = { imageUrl: dataUrl, description: page.description };
-    metaCache.set(city, result);
-    trimCache();
-    setTimeout(() => metaCache.delete(city), META_TTL);
-    return NextResponse.json(result, {
-      headers: { "Cache-Control": "private, max-age=300", "X-Cache": "MISS" },
-    });
+  for (const q of queries) {
+    const hit = await searchAndThumb(q);
+    if (hit) {
+      const result: CacheEntry = { imageUrl: hit.url, description: hit.desc };
+      metaCache.set(cacheKey, result);
+      trimCache();
+      setTimeout(() => metaCache.delete(cacheKey), META_TTL);
+      return NextResponse.json(result, {
+        headers: { "Cache-Control": "private, max-age=300", "X-Cache": "MISS" },
+      });
+    }
   }
 
-  if (cityName.length > 2) {
-    try {
-      const searchRes = await fetch(
-        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cityName.charAt(0).toUpperCase() + cityName.slice(1).toLowerCase())}`,
-        { headers: { "User-Agent": "AeroCast/1.0" }, signal: AbortSignal.timeout(3000) }
-      );
-      if (searchRes.ok) {
-        const data = await searchRes.json();
-        const rawUrl = data?.originalimage?.source || data?.thumbnail?.source || null;
-        if (rawUrl) {
-          const dataUrl = await fetchAsBase64(rawUrl);
-          if (dataUrl) {
-            const result: CacheEntry = { imageUrl: dataUrl, description: data?.description || null };
-            metaCache.set(city, result);
-            trimCache();
-            setTimeout(() => metaCache.delete(city), META_TTL);
-            return NextResponse.json(result, {
-              headers: { "Cache-Control": "private, max-age=300", "X-Cache": "MISS" },
-            });
-          }
-        }
-      }
-    } catch { }
+  for (const q of queries) {
+    const hit = await summaryThumb(q);
+    if (hit) {
+      const result: CacheEntry = { imageUrl: hit.url, description: hit.desc };
+      metaCache.set(cacheKey, result);
+      trimCache();
+      setTimeout(() => metaCache.delete(cacheKey), META_TTL);
+      return NextResponse.json(result, {
+        headers: { "Cache-Control": "private, max-age=300", "X-Cache": "MISS" },
+      });
+    }
   }
 
   return NextResponse.json({ imageUrl: null });

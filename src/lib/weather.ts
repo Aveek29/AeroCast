@@ -75,15 +75,77 @@ function hashCoord(s: string, seed: number): number {
   return Math.abs(h % 360) - 180;
 }
 
+const countryBounds: { code: string; name: string; timezone: number; latMin: number; latMax: number; lonMin: number; lonMax: number }[] = [
+  { code: "US", name: "United States", timezone: -18000, latMin: 24, latMax: 49, lonMin: -125, lonMax: -66 },
+  { code: "CA", name: "Canada", timezone: -18000, latMin: 41, latMax: 83, lonMin: -141, lonMax: -52 },
+  { code: "MX", name: "Mexico", timezone: -21600, latMin: 14, latMax: 33, lonMin: -118, lonMax: -86 },
+  { code: "BR", name: "Brazil", timezone: -10800, latMin: -34, latMax: 5, lonMin: -74, lonMax: -34 },
+  { code: "AR", name: "Argentina", timezone: -10800, latMin: -55, latMax: -22, lonMin: -74, lonMax: -54 },
+  { code: "GB", name: "United Kingdom", timezone: 0, latMin: 49, latMax: 61, lonMin: -8, lonMax: 2 },
+  { code: "IE", name: "Ireland", timezone: 0, latMin: 51, latMax: 55, lonMin: -10, lonMax: -5 },
+  { code: "FR", name: "France", timezone: 3600, latMin: 41, latMax: 52, lonMin: -5, lonMax: 9 },
+  { code: "ES", name: "Spain", timezone: 3600, latMin: 35, latMax: 44, lonMin: -10, lonMax: 4 },
+  { code: "PT", name: "Portugal", timezone: 0, latMin: 36, latMax: 42, lonMin: -10, lonMax: -6 },
+  { code: "DE", name: "Germany", timezone: 3600, latMin: 47, latMax: 55, lonMin: 5, lonMax: 15 },
+  { code: "NL", name: "Netherlands", timezone: 3600, latMin: 50, latMax: 53, lonMin: 3, lonMax: 7 },
+  { code: "BE", name: "Belgium", timezone: 3600, latMin: 49, latMax: 52, lonMin: 2, lonMax: 6 },
+  { code: "CH", name: "Switzerland", timezone: 3600, latMin: 45, latMax: 48, lonMin: 5, lonMax: 11 },
+  { code: "AT", name: "Austria", timezone: 3600, latMin: 46, latMax: 49, lonMin: 9, lonMax: 17 },
+  { code: "SE", name: "Sweden", timezone: 3600, latMin: 55, latMax: 69, lonMin: 11, lonMax: 25 },
+  { code: "NO", name: "Norway", timezone: 3600, latMin: 57, latMax: 71, lonMin: 4, lonMax: 31 },
+  { code: "DK", name: "Denmark", timezone: 3600, latMin: 54, latMax: 58, lonMin: 8, lonMax: 15 },
+  { code: "FI", name: "Finland", timezone: 7200, latMin: 59, latMax: 70, lonMin: 20, lonMax: 31 },
+  { code: "PL", name: "Poland", timezone: 3600, latMin: 49, latMax: 55, lonMin: 14, lonMax: 24 },
+  { code: "CZ", name: "Czech Republic", timezone: 3600, latMin: 48, latMax: 51, lonMin: 12, lonMax: 19 },
+  { code: "HU", name: "Hungary", timezone: 3600, latMin: 45, latMax: 49, lonMin: 16, lonMax: 23 },
+  { code: "RO", name: "Romania", timezone: 7200, latMin: 43, latMax: 48, lonMin: 20, lonMax: 30 },
+  { code: "GR", name: "Greece", timezone: 7200, latMin: 34, latMax: 42, lonMin: 19, lonMax: 30 },
+  { code: "IT", name: "Italy", timezone: 3600, latMin: 35, latMax: 47, lonMin: 6, lonMax: 19 },
+  { code: "RU", name: "Russia", timezone: 10800, latMin: 41, latMax: 82, lonMin: 19, lonMax: 180 },
+  { code: "TR", name: "Turkey", timezone: 10800, latMin: 35, latMax: 42, lonMin: 25, lonMax: 45 },
+  { code: "UA", name: "Ukraine", timezone: 7200, latMin: 44, latMax: 52, lonMin: 22, lonMax: 40 },
+  { code: "IN", name: "India", timezone: 19800, latMin: 6, latMax: 37, lonMin: 68, lonMax: 97 },
+  { code: "CN", name: "China", timezone: 28800, latMin: 18, latMax: 54, lonMin: 73, lonMax: 135 },
+  { code: "JP", name: "Japan", timezone: 32400, latMin: 30, latMax: 46, lonMin: 129, lonMax: 146 },
+  { code: "KR", name: "South Korea", timezone: 32400, latMin: 33, latMax: 39, lonMin: 124, lonMax: 130 },
+  { code: "TH", name: "Thailand", timezone: 25200, latMin: 5, latMax: 21, lonMin: 97, lonMax: 106 },
+  { code: "VN", name: "Vietnam", timezone: 25200, latMin: 8, latMax: 24, lonMin: 102, lonMax: 110 },
+  { code: "ID", name: "Indonesia", timezone: 25200, latMin: -11, latMax: 6, lonMin: 95, lonMax: 141 },
+  { code: "MY", name: "Malaysia", timezone: 28800, latMin: 1, latMax: 8, lonMin: 99, lonMax: 120 },
+  { code: "SG", name: "Singapore", timezone: 28800, latMin: 1, latMax: 2, lonMin: 103, lonMax: 105 },
+  { code: "PH", name: "Philippines", timezone: 28800, latMin: 4, latMax: 21, lonMin: 116, lonMax: 127 },
+  { code: "PK", name: "Pakistan", timezone: 18000, latMin: 23, latMax: 38, lonMin: 60, lonMax: 77 },
+  { code: "BD", name: "Bangladesh", timezone: 21600, latMin: 20, latMax: 27, lonMin: 88, lonMax: 93 },
+  { code: "AU", name: "Australia", timezone: 36000, latMin: -44, latMax: -10, lonMin: 112, lonMax: 155 },
+  { code: "NZ", name: "New Zealand", timezone: 43200, latMin: -48, latMax: -33, lonMin: 166, lonMax: 179 },
+  { code: "ZA", name: "South Africa", timezone: 7200, latMin: -35, latMax: -22, lonMin: 16, lonMax: 33 },
+  { code: "EG", name: "Egypt", timezone: 7200, latMin: 22, latMax: 32, lonMin: 24, lonMax: 37 },
+  { code: "NG", name: "Nigeria", timezone: 3600, latMin: 4, latMax: 14, lonMin: 2, lonMax: 15 },
+  { code: "KE", name: "Kenya", timezone: 10800, latMin: -5, latMax: 5, lonMin: 33, lonMax: 42 },
+  { code: "SA", name: "Saudi Arabia", timezone: 10800, latMin: 16, latMax: 32, lonMin: 34, lonMax: 56 },
+  { code: "AE", name: "UAE", timezone: 14400, latMin: 22, latMax: 27, lonMin: 51, lonMax: 57 },
+  { code: "IL", name: "Israel", timezone: 7200, latMin: 29, latMax: 33, lonMin: 34, lonMax: 36 },
+];
+
+function coordsToCountry(lat: number, lon: number): { code: string; name: string; timezone: number } {
+  for (const c of countryBounds) {
+    if (lat >= c.latMin && lat <= c.latMax && lon >= c.lonMin && lon <= c.lonMax) {
+      return { code: c.code, name: c.name, timezone: c.timezone };
+    }
+  }
+  return { code: "US", name: "United States", timezone: -18000 };
+}
+
 function generateMockCurrent(city: string, coordLat?: number, coordLon?: number): WeatherData {
   const cond = pickRandom(conditions);
   const temp = randBetween(18, 38);
   const lat = coordLat ?? hashCoord(city, 13);
   const lon = coordLon ?? hashCoord(city, 7);
+  const ct = coordsToCountry(lat, lon);
   return {
     location: city,
-    country: "IN",
-    timezone: 19800,
+    country: ct.code,
+    timezone: ct.timezone,
     temperature: temp,
     feelsLike: temp + randBetween(-2, 4),
     condition: cond.label,
